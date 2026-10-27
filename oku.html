@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Okuma alanı · Rahat Okuma Platformu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Inter:wght@400;600&family=Lexend:wght@400;600&family=Literata:opsz,wght@7..72,400;7..72,600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  #okuma { font-family: var(--font); font-size: calc(var(--size) * 1px); line-height: var(--lh); max-width: calc(var(--w) * 1ch); margin: 0 auto; padding: 24px 20px 120px; }
+  #okuma h1 { font-size: 1.5em; line-height: 1.3; margin: 0 0 1em; font-weight: 600; }
+  #okuma p { margin: 0 0 1em; }
+  .giris { max-width: 720px; margin: 0 auto; padding: 8px 20px 60px; display: grid; gap: 14px; }
+  .giris h1 { font-size: 1.6rem; margin: 0; }
+  .giris input[type=text], .giris textarea { width: 100%; font: inherit; font-size: 1rem; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); }
+  .giris textarea { min-height: 46vh; resize: vertical; line-height: 1.6; }
+  .satir { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .hint { color: var(--muted); font-size: .9rem; }
+  .bar .btn { padding: 8px 14px; }
+  .bar div { display: flex; gap: 8px; }
+  #panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(340px, 92vw); background: var(--panel); border-left: 1px solid var(--line); padding: 20px; overflow-y: auto; transform: translateX(105%); transition: transform .2s; z-index: 5; font-family: system-ui, sans-serif; font-size: .95rem; line-height: 1.4; }
+  #panel.acik { transform: none; }
+  .panelUst { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  #panel h2 { font-size: 1.05rem; margin: 0; }
+  #panel .btn { padding: 6px 12px; font-size: .9rem; }
+  #panel label { display: block; margin: 16px 0 6px; font-weight: 600; }
+  #panel output { font-weight: 400; color: var(--muted); }
+  #panel select, #panel input[type=range] { width: 100%; font: inherit; padding: 6px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; }
+  #panel input[type=range] { padding: 0; accent-color: var(--accent); }
+  .temalar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tema { padding: 12px 4px; border-radius: 8px; border: 2px solid var(--line); cursor: pointer; font: inherit; font-size: .85rem; }
+  .tema[aria-pressed=true] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  #mola { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--accent); border-radius: 10px; padding: 12px 16px; display: none; gap: 12px; align-items: center; z-index: 4; font-family: system-ui, sans-serif; font-size: .95rem; max-width: 92vw; }
+  #mola.goster { display: flex; }
+  .gizli { display: none !important; }
+</style>
+<script>try{var s=JSON.parse(localStorage.getItem("rahatOkuma")||"{}");if(s.theme)document.documentElement.dataset.theme=s.theme}catch(e){}</script>
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="./">Rahat Okuma Platformu</a>
+  <div>
+    <button class="btn gizli" id="sil">Metni sil</button>
+    <button class="btn gizli" id="duzenle">Metni düzenle</button>
+    <button class="btn" id="ayarAc" aria-expanded="false" aria-controls="panel">Ayarlar</button>
+  </div>
+</header>
+
+<main>
+  <section class="giris" id="giris">
+    <h1>Okumak istediğiniz metni ekleyin</h1>
+    <input type="text" id="baslik" placeholder="Başlık (isteğe bağlı)" aria-label="Başlık">
+    <textarea id="metin" placeholder="Makaleyi buraya yapıştırın. Boş satırlar paragraf olur." aria-label="Metin"></textarea>
+    <div class="satir">
+      <button class="btn main" id="oku">Okumaya geç</button>
+      <label class="btn" for="dosya">TXT dosyasından aktar</label>
+      <input type="file" id="dosya" accept=".txt,text/plain" class="gizli">
+    </div>
+    <p class="hint">Metin tarayıcınızda kalır, hiçbir sunucuya gönderilmez.</p>
+  </section>
+  <article id="okuma" class="gizli" aria-live="polite"></article>
+</main>
+
+<aside id="panel" aria-label="Okuma ayarları">
+  <div class="panelUst"><h2>Okuma ayarları</h2><button class="btn" id="ayarKapat" aria-label="Ayarları kapat">Kapat ✕</button></div>
+  <div class="temalar" id="temalar" role="group" aria-label="Tema"></div>
+
+  <label for="font">Yazı tipi</label>
+  <select id="font">
+    <option value="'Literata', Georgia, serif">Literata (tırnaklı, kitap tadı)</option>
+    <option value="'Source Serif 4', Georgia, serif">Source Serif (tırnaklı, ince)</option>
+    <option value="'Atkinson Hyperlegible', system-ui, sans-serif">Atkinson (harfler net ayrışır)</option>
+    <option value="'Lexend', system-ui, sans-serif">Lexend (geniş aralıklı)</option>
+    <option value="'Inter', system-ui, sans-serif">Inter (sade)</option>
+    <option value="system-ui, -apple-system, 'Segoe UI', sans-serif">Sistem yazı tipi</option>
+  </select>
+
+  <label for="size">Yazı boyutu <output id="sizeO"></output></label>
+  <input type="range" id="size" min="16" max="30" step="1">
+
+  <label for="lh">Satır aralığı <output id="lhO"></output></label>
+  <input type="range" id="lh" min="1.4" max="2.2" step="0.05">
+
+  <label for="w">Satır genişliği <output id="wO"></output></label>
+  <input type="range" id="w" min="40" max="80" step="1">
+
+  <label><input type="checkbox" id="molaCb"> 20 dakikada bir mola hatırlat</label>
+  <p class="hint">Ekran başında göz kırpma azalır. Hatırlatma, 20 saniye uzağa bakmanızı önerir.</p>
+  <button class="btn" id="sifirla" style="margin-top:12px">Varsayılana dön</button>
+</aside>
+
+<div id="mola" role="status"><span>Mola zamanı: 20 saniye uzaktaki bir noktaya bakın ve birkaç kez göz kırpın.</span><button class="btn" id="molaKapat">Tamam</button></div>
+
+<script>
+const TEMALAR = {kagit:"Kâğıt", sis:"Gri sis", nane:"Nane", gece:"Gece", kul:"Kül", lacivert:"Lacivert"};
+const VARSAYILAN = {theme:"kagit", font:"'Literata', Georgia, serif", size:20, lh:1.7, w:62, mola:false};
+let S = Object.assign({}, VARSAYILAN);
+try { Object.assign(S, JSON.parse(localStorage.getItem("rahatOkuma") || "{}")); } catch(e) {}
+const $ = id => document.getElementById(id);
+let molaZ = null;
+
+function uygula() {
+  const r = document.documentElement;
+  r.dataset.theme = S.theme;
+  r.style.setProperty("--font", S.font);
+  r.style.setProperty("--size", S.size);
+  r.style.setProperty("--lh", S.lh);
+  r.style.setProperty("--w", S.w);
+  $("font").value = S.font; $("size").value = S.size; $("lh").value = S.lh; $("w").value = S.w;
+  $("sizeO").textContent = S.size + " px"; $("lhO").textContent = S.lh; $("wO").textContent = S.w + " karakter";
+  $("molaCb").checked = S.mola;
+  document.querySelectorAll(".tema").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === S.theme));
+  clearInterval(molaZ);
+  if (S.mola) molaZ = setInterval(() => $("mola").classList.add("goster"), 20 * 60 * 1000);
+  try { localStorage.setItem("rahatOkuma", JSON.stringify(S)); } catch(e) {}
+}
+
+for (const [k, ad] of Object.entries(TEMALAR)) {
+  const b = document.createElement("button");
+  b.className = "tema"; b.dataset.t = k; b.textContent = ad;
+  b.setAttribute("data-theme", k);
+  b.style.cssText = "background:var(--bg);color:var(--fg)";
+  b.onclick = () => { S.theme = k; uygula(); };
+  $("temalar").appendChild(b);
+}
+$("font").onchange = e => { S.font = e.target.value; uygula(); };
+["size","lh","w"].forEach(id => $(id).oninput = e => { S[id] = parseFloat(e.target.value); uygula(); });
+$("molaCb").onchange = e => { S.mola = e.target.checked; uygula(); };
+$("molaKapat").onclick = () => $("mola").classList.remove("goster");
+$("sifirla").onclick = () => { S = Object.assign({}, VARSAYILAN); uygula(); };
+function panelKapat() { $("panel").classList.remove("acik"); $("ayarAc").setAttribute("aria-expanded", false); }
+$("ayarAc").onclick = e => { e.stopPropagation(); const a = $("panel").classList.toggle("acik"); $("ayarAc").setAttribute("aria-expanded", a); };
+$("ayarKapat").onclick = panelKapat;
+document.addEventListener("click", e => { if ($("panel").classList.contains("acik") && !$("panel").contains(e.target)) panelKapat(); });
+
+$("dosya").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { $("metin").value = rd.result; if (!$("baslik").value) $("baslik").value = f.name.replace(/\.txt$/i, ""); kaydet("duzenle"); };
+  rd.readAsText(f, "utf-8");
+};
+
+function kaydet(mod) {
+  try { localStorage.setItem("rahatOkumaMetin", JSON.stringify({t: $("baslik").value, m: $("metin").value, mod})); } catch(e) {}
+}
+function okumayaGec(ilk) {
+  const m = $("metin").value.trim();
+  if (!m) { $("metin").focus(); return; }
+  const o = $("okuma"); o.textContent = "";
+  const t = $("baslik").value.trim();
+  if (t) { const h = document.createElement("h1"); h.textContent = t; o.appendChild(h); }
+  m.split(/\n\s*\n/).forEach(par => {
+    const p = document.createElement("p");
+    p.textContent = par.replace(/\s*\n\s*/g, " ").trim();
+    if (p.textContent) o.appendChild(p);
+  });
+  $("giris").classList.add("gizli"); o.classList.remove("gizli"); $("duzenle").classList.remove("gizli"); $("sil").classList.remove("gizli");
+  if (!ilk) { kaydet("okuma"); window.scrollTo(0, 0); }
+}
+$("oku").onclick = () => okumayaGec(false);
+$("duzenle").onclick = () => {
+  $("okuma").classList.add("gizli"); $("giris").classList.remove("gizli"); $("duzenle").classList.add("gizli"); $("sil").classList.add("gizli");
+  kaydet("duzenle");
+};
+$("sil").onclick = () => {
+  $("metin").value = ""; $("baslik").value = ""; $("okuma").textContent = "";
+  try { localStorage.removeItem("rahatOkumaMetin"); } catch(e) {}
+  $("okuma").classList.add("gizli"); $("giris").classList.remove("gizli");
+  $("duzenle").classList.add("gizli"); $("sil").classList.add("gizli");
+  window.scrollTo(0, 0); $("metin").focus();
+};
+$("metin").oninput = $("baslik").oninput = () => kaydet("duzenle");
+try {
+  const k = JSON.parse(localStorage.getItem("rahatOkumaMetin") || "null");
+  if (k && k.m) { $("baslik").value = k.t || ""; $("metin").value = k.m; if (k.mod === "okuma") okumayaGec(true); }
+} catch(e) {}
+document.addEventListener("keydown", e => { if (e.key === "Escape") panelKapat(); });
+uygula();
+</script>
+</body>
+</html>
